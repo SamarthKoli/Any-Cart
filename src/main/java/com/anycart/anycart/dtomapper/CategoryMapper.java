@@ -1,25 +1,35 @@
 package com.anycart.anycart.dtomapper;
 
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.factory.Mappers;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Component;
 
 import com.anycart.anycart.dto.CategoryCreationDTO;
 import com.anycart.anycart.dto.CategoryListDTO;
 import com.anycart.anycart.entities.Category;
 
-import java.util.List;
+@Component
+public class CategoryMapper {
 
-@Mapper(componentModel = "spring")
-public interface CategoryMapper {
-    CategoryMapper INSTANCE = Mappers.getMapper(CategoryMapper.class);
+    public CategoryListDTO toCategoryListDTO(Category category) {
+        return new CategoryListDTO(
+            category.getId(),
+            category.getName(),
+            category.getParentCategory() != null ? category.getParentCategory().getName() : null
+        );
+    }
 
-    @Mapping(source = "parentCategory.name", target = "parentCategoryName")
-    CategoryListDTO toCategoryListDTO(Category category);
+    public List<CategoryListDTO> toCategoryListDTOs(List<Category> categories) {
+        return categories.stream().map(this::toCategoryListDTO).collect(Collectors.toList());
+    }
 
-    List<CategoryListDTO> toCategoryListDTOs(List<Category> categories);
-
-    @Mapping(target = "id", ignore = true)
-    @Mapping(target = "parentCategory", source = "parentCategoryId")
-    Category toCategory(CategoryCreationDTO dto);
+    public Category toCategory(CategoryCreationDTO dto) {
+        Category category = new Category();
+        category.setName(dto.getName());
+        category.setDescription(dto.getDescription());
+        // setParentCategory externally in service layer using repo
+        return category;
+    }
 }
+

@@ -1,29 +1,38 @@
 package com.anycart.anycart.dtomapper;
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.factory.Mappers;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Component;
 
 import com.anycart.anycart.dto.AddToCartDTO;
 import com.anycart.anycart.dto.CartItemDTO;
 import com.anycart.anycart.entities.Cart;
 
-import java.util.List;
+@Component
+public class CartMapper {
 
-@Mapper(componentModel = "spring")
-public interface CartMapper {
-    CartMapper INSTANCE = Mappers.getMapper(CartMapper.class);
+    public CartItemDTO toCartItemDTO(Cart cart) {
+        return new CartItemDTO(
+            cart.getProduct().getId(),
+            cart.getProduct().getName(),
+            cart.getProduct().getPrice(),
+            cart.getQuantity(),
+            cart.getProduct().getImageUrl()
+        );
+    }
 
-    @Mapping(source = "product.id", target = "productId")
-    @Mapping(source = "product.name", target = "productName")
-    @Mapping(source = "product.price", target = "price")
-    @Mapping(source = "product.imageUrl", target = "imageUrl")
-    CartItemDTO toCartItemDTO(Cart cart);
+    public List<CartItemDTO> toCartItemDTOs(List<Cart> carts) {
+        return carts.stream().map(this::toCartItemDTO).collect(Collectors.toList());
+    }
 
-    List<CartItemDTO> toCartItemDTOs(List<Cart> carts);
-
-    @Mapping(target = "id", ignore = true)
-    @Mapping(target = "user", ignore = true)
-    @Mapping(target = "product", source = "productId")
-    @Mapping(target = "addedAt", expression = "java(java.time.LocalDateTime.now())")
-    Cart toCart(AddToCartDTO dto);
+    public Cart toCart(AddToCartDTO dto) {
+        Cart cart = new Cart();
+        cart.setQuantity(dto.getQuantity());
+        cart.setAddedAt(LocalDateTime.now());
+        // You must set user and product separately in service layer
+        return cart;
+    }
 }
+

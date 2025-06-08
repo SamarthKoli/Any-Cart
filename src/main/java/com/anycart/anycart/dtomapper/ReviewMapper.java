@@ -1,27 +1,38 @@
 package com.anycart.anycart.dtomapper;
 
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.factory.Mappers;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Component;
 
 import com.anycart.anycart.dto.CreateReviewDTO;
 import com.anycart.anycart.dto.ReviewDTO;
 import com.anycart.anycart.entities.Review;
 
-import java.util.List;
+@Component
+public class ReviewMapper {
 
-@Mapper(componentModel = "spring")
-public interface ReviewMapper {
-    ReviewMapper INSTANCE = Mappers.getMapper(ReviewMapper.class);
+    public ReviewDTO toReviewDTO(Review review) {
+        String userName = review.getUser().getFirstName() + " " + review.getUser().getLastName();
+        return new ReviewDTO(
+            review.getId(),
+            review.getRating(),
+            review.getComment(),
+            userName,
+            review.getCreatedAt()
+        );
+    }
 
-    @Mapping(target = "userName", expression = "java(review.getUser().getFirstName() + \" \" + review.getUser().getLastName())")
-    ReviewDTO toReviewDTO(Review review);
+    public List<ReviewDTO> toReviewDTOs(List<Review> reviews) {
+        return reviews.stream().map(this::toReviewDTO).collect(Collectors.toList());
+    }
 
-    List<ReviewDTO> toReviewDTOs(List<Review> reviews);
-
-    @Mapping(target = "id", ignore = true)
-    @Mapping(target = "user", ignore = true)
-    @Mapping(target = "product", source = "productId")
-    @Mapping(target = "createdAt", expression = "java(java.time.LocalDateTime.now())")
-    Review toReview(CreateReviewDTO dto);
+    public Review toReview(CreateReviewDTO dto) {
+        Review review = new Review();
+        review.setRating(dto.getRating());
+        review.setComment(dto.getComment());
+        review.setCreatedAt(LocalDateTime.now());
+        return review;
+    }
 }

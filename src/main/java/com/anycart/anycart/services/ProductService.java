@@ -25,8 +25,7 @@ public class ProductService {
 
     @Autowired CategoryRepository categoryRepository;
 
-    @Autowired 
-    ProductMapper productMapper;
+    @Autowired ProductMapper productMapper;
 
 
     public List<ProductListDTO> getAllProducts(){

@@ -1,28 +1,35 @@
 package com.anycart.anycart.dtomapper;
 
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.factory.Mappers;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Component;
 
 import com.anycart.anycart.dto.OrderItemCreationDTO;
 import com.anycart.anycart.dto.OrderItemDTO;
 import com.anycart.anycart.entities.OrderItem;
 
-import java.util.List;
+@Component
+public class OrderItemMapper {
 
-@Mapper(componentModel = "spring")
-public interface OrderItemMapper {
-    OrderItemMapper INSTANCE = Mappers.getMapper(OrderItemMapper.class);
+    public OrderItemDTO toOrderItemDTO(OrderItem orderItem) {
+        return new OrderItemDTO(
+            orderItem.getProduct().getId(),
+            orderItem.getProduct().getName(),
+            orderItem.getQuantity(),
+            orderItem.getUnitPrice()
+        );
+    }
 
-    @Mapping(source = "product.id", target = "productId")
-    @Mapping(source = "product.name", target = "productName")
-    OrderItemDTO toOrderItemDTO(OrderItem orderItem);
+    public List<OrderItemDTO> toOrderItemDTOs(List<OrderItem> items) {
+        return items.stream().map(this::toOrderItemDTO).collect(Collectors.toList());
+    }
 
-    List<OrderItemDTO> toOrderItemDTOs(List<OrderItem> orderItems);
-
-    @Mapping(target = "id", ignore = true)
-    @Mapping(target = "order", ignore = true)
-    @Mapping(target = "product", source = "productId")
-    @Mapping(target = "unitPrice", ignore = true)
-    OrderItem toOrderItem(OrderItemCreationDTO dto);
+    public OrderItem toOrderItem(OrderItemCreationDTO dto) {
+        OrderItem item = new OrderItem();
+        item.setQuantity(dto.getQuantity());
+        // set product and order externally in service
+        return item;
+    }
 }
+
