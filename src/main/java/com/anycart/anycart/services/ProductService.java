@@ -25,7 +25,7 @@ public class ProductService {
 
     @Autowired CategoryRepository categoryRepository;
 
-    @Autowired ProductMapper productMapper;
+    @Autowired  ProductMapper productMapper;
 
 
     public List<ProductListDTO> getAllProducts(){
@@ -57,5 +57,26 @@ public class ProductService {
 
         
     }
+
+    public ProductDetailsDTO updateProduct( Long id, @Valid ProductCreationDTO productCreationDTO){
+
+        Product product=productRepository.findById(id)
+        .orElseThrow(()-> new RuntimeException("Product not found"));
+
+        Category category=categoryRepository.findById(productCreationDTO.getCategoryId())
+        .orElseThrow(()-> new RuntimeException("Category not found"));
+
+
+        Product updatedProduct=productMapper.toProduct(productCreationDTO);
+        updatedProduct.setId(id);
+        updatedProduct.setCategory(category);
+        updatedProduct.setCreatedAt(product.getCreatedAt());
+        updatedProduct.setUpdatedAt(java.time.LocalDateTime.now());
+        updatedProduct = productRepository.save(updatedProduct);
+        return productMapper.toProductDetailsDTO(updatedProduct);
+
+
+    }
+    
 
 }
