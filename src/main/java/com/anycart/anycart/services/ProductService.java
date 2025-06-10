@@ -29,7 +29,10 @@ public class ProductService {
 
 
     public List<ProductListDTO> getAllProducts(){
+
+
         List<Product> products=productRepository.findAll();
+        
         return productMapper.toProductListDTOs(products);
     }
 
