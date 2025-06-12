@@ -2,7 +2,7 @@ package com.anycart.anycart.entities;
 
 import jakarta.persistence.*;
 import lombok.Data;
-import java.time.LocalDateTime;
+
 
 @Entity
 @Table(name = "categories")

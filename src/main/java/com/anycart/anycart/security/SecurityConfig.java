@@ -26,6 +26,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**", "/api/v1/products/**", "/api/v1/categories/viewAll", "/api/v1/categories/viewSubcategory/**", "/api/v1/categories/viewById/**").permitAll()
                         .requestMatchers("/api/v1/categories/add", "/api/v1/categories/update/**", "/api/v1/categories/remove/**").hasRole("Admin")
+                        .requestMatchers("/api/v1/cartItems/**").authenticated()
                         .anyRequest().authenticated())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
