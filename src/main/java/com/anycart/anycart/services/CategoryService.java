@@ -51,7 +51,7 @@ public class CategoryService {
             return categoryMapper.toCategoryListDTO(category);
     }
 
-
+ 
 
      public CategoryListDTO updateCategory(Long id, @Valid CategoryCreationDTO dto) {
         Category category = categoryRepository.findById(id)
