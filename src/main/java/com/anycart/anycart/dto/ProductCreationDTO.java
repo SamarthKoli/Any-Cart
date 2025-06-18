@@ -5,6 +5,8 @@ import lombok.*;
 import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
 
+import org.springframework.web.multipart.MultipartFile;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -23,7 +25,7 @@ public class ProductCreationDTO {
     @Min(0)
     private Integer stock;
 
-    private String imageUrl; // Optional
+    private MultipartFile image;
 
     @NotNull
     private Long categoryId;
