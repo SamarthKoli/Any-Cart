@@ -5,6 +5,7 @@ import com.anycart.anycart.dto.ProductDetailsDTO;
 import com.anycart.anycart.dto.ProductListDTO;
 import com.anycart.anycart.services.CloudinaryService;
 import com.anycart.anycart.services.ProductService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,6 +31,9 @@ public class ProductController {
     @Autowired
     private CloudinaryService cloudinaryService;
 
+    @Autowired
+    private ObjectMapper objectMapper;
+
     @GetMapping("/viewAll")
     public ResponseEntity<List<ProductListDTO>> getAllProducts() {
         logger.info("Fetching all products");
@@ -54,33 +58,53 @@ public class ProductController {
     @PostMapping(value = "/add", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('Admin')")
     public ResponseEntity<ProductDetailsDTO> addProduct(
-            @Valid @RequestPart("product") ProductCreationDTO productCreationDTO,
+            @RequestPart("product") String productJson,
             @RequestPart(value = "image", required = false) MultipartFile image) {
-        logger.info("Creating product with name: {}", productCreationDTO.getName());
-        if (image != null && !image.isEmpty()) {
-            logger.info("Image provided: {}", image.getOriginalFilename());
-            productCreationDTO.setImage(image);
-        } else {
-            logger.info("No image provided for product creation");
+        logger.info("Received product JSON: {}", productJson);
+        try {
+            ProductCreationDTO productCreationDTO = objectMapper.readValue(productJson, ProductCreationDTO.class);
+            logger.info("Creating product with name: {}", productCreationDTO.getName());
+            if (image != null && !image.isEmpty()) {
+                logger.info("Image provided: {}", image.getOriginalFilename());
+                productCreationDTO.setImage(image);
+            } else {
+                logger.info("No image provided for product creation");
+            }
+            ProductDetailsDTO productDetailsDTO = productService.createProduct(productCreationDTO);
+            return ResponseEntity.status(HttpStatus.CREATED).body(productDetailsDTO);
+        } catch (Exception e) {
+            logger.error("Failed to parse product JSON or process request: {}", e.getMessage());
+            throw new RuntimeException("Invalid product data: " + e.getMessage());
         }
-        ProductDetailsDTO productDetailsDTO = productService.createProduct(productCreationDTO);
-        return ResponseEntity.status(HttpStatus.CREATED).body(productDetailsDTO);
     }
 
     @PutMapping(value = "/update/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('Admin')")
     public ResponseEntity<ProductDetailsDTO> updateProduct(
             @PathVariable Long id,
-            @Valid @RequestPart("product") ProductCreationDTO productCreationDTO,
+            @RequestPart("product") String productJson,
             @RequestPart(value = "image", required = false) MultipartFile image) {
-        logger.info("Updating product with id: {}", id);
-        if (image != null && !image.isEmpty()) {
-            logger.info("New image provided: {}", image.getOriginalFilename());
-            productCreationDTO.setImage(image);
-        } else {
-            logger.info("No new image provided for product update");
+        logger.info("Received product JSON for update: {}", productJson);
+        try {
+            ProductCreationDTO productCreationDTO = objectMapper.readValue(productJson, ProductCreationDTO.class);
+            logger.info("Updating product with id: {}", id);
+            if (image != null && !image.isEmpty()) {
+                logger.info("New image provided: {}", image.getOriginalFilename());
+                productCreationDTO.setImage(image);
+            } else {
+                logger.info("No new image provided for product update");
+            }
+            ProductDetailsDTO productDetailsDTO = productService.updateProduct(id, productCreationDTO);
+            return ResponseEntity.status(HttpStatus.ACCEPTED).body(productDetailsDTO);
+        } catch (Exception e) {
+            logger.error("Failed to parse product JSON or process request: {}", e.getMessage());
+            throw new RuntimeException("Invalid product data: " + e.getMessage());
         }
-        ProductDetailsDTO productDetailsDTO = productService.updateProduct(id, productCreationDTO);
-        return ResponseEntity.status(HttpStatus.ACCEPTED).body(productDetailsDTO);
+    }
+
+    @PostMapping(value = "/test-upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<String> testUpload(@RequestPart("file") MultipartFile file) {
+        logger.info("Test upload received file: {}", file.getOriginalFilename());
+        return ResponseEntity.ok("File received: " + file.getOriginalFilename());
     }
 }
