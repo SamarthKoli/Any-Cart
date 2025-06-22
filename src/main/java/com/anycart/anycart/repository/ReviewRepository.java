@@ -8,4 +8,5 @@ import com.anycart.anycart.entities.Review;
 @Repository
 public interface ReviewRepository  extends JpaRepository<Review,Long>{
 
+    
 }
