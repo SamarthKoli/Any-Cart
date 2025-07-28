@@ -4,6 +4,8 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -47,83 +49,92 @@ public class OrderService {
 
 
     @Autowired EmailService emailService;
+   private static final Logger logger = LoggerFactory.getLogger(OrderService.class);
 
 
-
-    @Transactional
-    public OrderDetailsDTO placeOrder(String email, @Valid PlaceOrderDTO dto){
-
-        User user=userRepository.findByEmail(email).
-        orElseThrow(()-> new RuntimeException("User not found"));
-
-        List<Cart> cartItems =cartRepository.findByUserId(user.getId());
-
-        if (cartItems.isEmpty()) {
-            throw new RuntimeException("Cart is empty");
-
-        }
-
-        List<Cart> selectedItems=cartItems.stream()
-        .filter(cart-> dto.getCartItemIds()
-        .contains(cart.getId())).collect(Collectors.toList());
-
-
-        if (selectedItems.isEmpty()) {
-            throw new RuntimeException("No valid cart items are selected");
-
-        }
-
-        for(Cart cart:selectedItems){
-            Product product=cart.getProduct();
-            if (product.getStock()< cart.getQuantity()) {
-                throw new RuntimeException(product.getName()+"is out of stock");
-            }
-
-           
-            
-        }
-
-         Order order=orderMapper.toOrder(dto);
-         order.setUser(user);
-         order.setTotalAmount(BigDecimal.ZERO);
-         order=orderRepository.save(order);
-
-         // Create order items
-        BigDecimal totalAmount = BigDecimal.ZERO;
-        for (Cart cart : selectedItems) {
-            Product product = cart.getProduct();
-            OrderItem orderItem = new OrderItem();
-            orderItem.setOrder(order);
-            orderItem.setProduct(product);
-            orderItem.setQuantity(cart.getQuantity());
-            orderItem.setUnitPrice(product.getPrice());
-            orderItemRepository.save(orderItem);
-            order.getOrderItems().add(orderItem);
-
-            // Update total amount
-            totalAmount = totalAmount.add(product.getPrice().multiply(new BigDecimal(cart.getQuantity())));
-
-            // Update stock
-            product.setStock(product.getStock() - cart.getQuantity());
-            product.setUpdatedAt(LocalDateTime.now());
-            productRepository.save(product);
-        }
-
-        // Update order total
-        order.setTotalAmount(totalAmount);
-        order = orderRepository.save(order);
-
-        // Clear selected cart items
-        cartRepository.deleteAll(selectedItems);
-
-        emailService.sendOrderConfirmationEmail(order);
-
-        return orderMapper.toOrderDetailsDTO(order);
-
-
-            
+@Transactional
+public OrderDetailsDTO placeOrder(String email, @Valid PlaceOrderDTO dto) {
+    logger.info("Starting place order for user: {}, cartItemIds: {}", email, dto.getCartItemIds());
+    
+    User user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new RuntimeException("User not found"));
+    
+    logger.info("User found: {}", user.getId());
+    
+    List<Cart> cartItems = cartRepository.findByUserId(user.getId());
+    logger.info("Found {} cart items for user", cartItems.size());
+    
+    if (cartItems.isEmpty()) {
+        throw new RuntimeException("Cart is empty");
+    }
+    
+    List<Cart> selectedItems = cartItems.stream()
+            .filter(cart -> dto.getCartItemIds().contains(cart.getId()))
+            .collect(Collectors.toList());
+    
+    logger.info("Selected {} items from cart for order", selectedItems.size());
+    
+    if (selectedItems.isEmpty()) {
+        logger.error("No cart items found for IDs: {}. Available cart item IDs: {}", 
+                    dto.getCartItemIds(), 
+                    cartItems.stream().map(Cart::getId).collect(Collectors.toList()));
+        throw new RuntimeException("No valid cart items are selected");
     }
 
+    // Validate stock for selected items
+    for (Cart cart : selectedItems) {
+        Product product = cart.getProduct();
+        logger.info("Checking stock for product: {} (requested: {}, available: {})", 
+                   product.getName(), cart.getQuantity(), product.getStock());
+        if (product.getStock() < cart.getQuantity()) {
+            throw new RuntimeException("Product " + product.getName() + " is out of stock");
+        }
+    }
+
+    // Rest of your existing code...
+    Order order = orderMapper.toOrder(dto);
+    order.setUser(user);
+    order.setTotalAmount(BigDecimal.ZERO);
+    order = orderRepository.save(order);
+
+    // Create order items
+    BigDecimal totalAmount = BigDecimal.ZERO;
+    for (Cart cart : selectedItems) {
+        Product product = cart.getProduct();
+        OrderItem orderItem = new OrderItem();
+        orderItem.setOrder(order);
+        orderItem.setProduct(product);
+        orderItem.setQuantity(cart.getQuantity());
+        orderItem.setUnitPrice(product.getPrice());
+        orderItemRepository.save(orderItem);
+        order.getOrderItems().add(orderItem);
+
+        // Update total amount
+        totalAmount = totalAmount.add(product.getPrice().multiply(new BigDecimal(cart.getQuantity())));
+
+        // Update stock
+        product.setStock(product.getStock() - cart.getQuantity());
+        product.setUpdatedAt(LocalDateTime.now());
+        productRepository.save(product);
+    }
+
+    // Update order total
+    order.setTotalAmount(totalAmount);
+    order = orderRepository.save(order);
+
+    // Clear selected cart items
+    cartRepository.deleteAll(selectedItems);
+
+    try {
+        emailService.sendOrderConfirmationEmail(order);
+    } catch (Exception e) {
+        logger.error("Failed to send order confirmation email: {}", e.getMessage());
+        // Don't fail the order if email fails
+    }
+
+    logger.info("Order placed successfully: {}", order.getId());
+    return orderMapper.toOrderDetailsDTO(order);
+}
 
     public OrderDetailsDTO getOrderDetails(String email, Long orderId) {
         User user = userRepository.findByEmail(email)
